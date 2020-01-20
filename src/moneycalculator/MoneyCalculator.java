@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 public class MoneyCalculator {
@@ -15,10 +17,16 @@ public class MoneyCalculator {
         
     }
     
-    private double amount; 
-    private double exchangeRate;
-    private String currencyFrom;
-    private String currencyTo;
+    private Money money;
+    private ExchangeRate exchangeRate;
+    private Currency currencyTo;
+    private Map<String, Currency> currencies = new HashMap<>();
+    
+    public MoneyCalculator(){
+        currencies.put("USD", new Currency("USD", "Dólar americano", "$"));
+        currencies.put("EUR", new Currency("EUR", "Euros", "€"));
+        currencies.put("GBP", new Currency("GBP", "Libras Esterlinas", "£"));
+    }
     
     private void control() throws IOException {
         input();
@@ -27,36 +35,40 @@ public class MoneyCalculator {
     }
     
     private void input() {
-        System.out.println("Introduzca una cantidad en dólares: ");
+        System.out.println("Introduzca una cantidad:");
         Scanner scanner = new Scanner(System.in);
-        
-        amount = Double.parseDouble(scanner.next());
+        double amount = Double.parseDouble(scanner.next());
         
         System.out.println("Introduzca divisa origen");
-        currencyFrom = scanner.next();
+        Currency currency = currencies.get(scanner.next().toUpperCase());
+        
+        money = new Money (amount, currency);
         
         System.out.println("Introduzca divisa destino");
-        currencyTo = scanner.next();
+        currencyTo = currencies.get(scanner.next().toUpperCase());
     }
     
     private void process() throws IOException {
-        exchangeRate = getExchangeRate(currencyFrom, currencyTo);
+        exchangeRate = getExchangeRate(money.getCurrency(), currencyTo);
     }
     
     private void output() {
-        System.out.println(amount + " " + currencyFrom + "equivalen a " + amount * exchangeRate + " " + currencyTo);
+        System.out.println(money.getAmount() + " "
+                + money.getCurrency().getSymbol() + "equivalen a "
+                + money.getAmount() * exchangeRate.getRate() + " "
+                + currencyTo.getSymbol());
                
     }
-    private static double getExchangeRate (String from, String to) throws IOException {
+    private static ExchangeRate getExchangeRate (Currency from, Currency to) throws IOException {
         URL url = 
-            new URL("http://free.currencyconverterapi.com/api/v5/convert?q=" +
-                    from + "_" + to + "&compact=y");
+            new URL("https://free.currconv.com/api/v7/convert?q=" + from + "_" + to + "&compact=ultra&apiKey=e374ec108bbad0f57f78");
         URLConnection connection = url.openConnection();
         try (BufferedReader reader =
                 new BufferedReader(new InputStreamReader(connection.getInputStream()))){
             String line = reader.readLine();
-            String line1 = line.substring(line.indexOf(to)+12,line.indexOf("}"));
-            return Double.parseDouble(line1);
+            String line1 = line.substring(line.indexOf(to.getCode())+12,line.indexOf("}"));
+            return new ExchangeRate(from, to, 
+                    Double.parseDouble(line1));
         }
     }
     
